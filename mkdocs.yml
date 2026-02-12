@@ -7,7 +7,25 @@ site_dir: site
 plugins:
   - search:
       separator: '[\s\-,:!=\[\]\(\)"/]+|\.(?!\d)'
-  - awesome-pages
+  - i18n:
+      docs_structure: folder
+#      fallback_to_default: false
+      reconfigure_material: true
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+          link: /en/
+        - locale: es
+          name: Español
+          build: true
+         link: /es/
+        - locale: zh
+          name: 中文
+          build: true
+          link: /zh/
+  - awesome-nav
   - redirects:
       redirect_maps:
          'operations/customize_components.md': 'cluster_admin/customize_components.md'
@@ -132,3 +150,17 @@ theme:
     - navigation.tabs.sticky
     - content.action.view
     - content.action.edit
+
+extra:
+  version:
+    provider: mikE
+  alternate:
+    - name: English
+      link: ""
+      lang: en
+    - name: Español
+      link: es
+      lang: es
+    - name: 中文
+      link: zh
+      lang: zh

@@ -111,15 +111,21 @@ endif
 
 ## Build site. This target should only be used by Netlify and Prow
 build: envvar
+	mkdir -p docs/en
+	find docs/ -mindepth 1 -maxdepth 1 ! -name "assets" ! -name "_redirects" ! -name "stylesheets" ! -name "en" -print0 | xargs -0 mv -t docs/en/
+	cp -r i18n/* docs/.
 	@echo "${GREEN}Makefile: Build mkdocs site${RESET}"
 	$(PYTHON) -m venv /tmp/venv
 	. /tmp/venv/bin/activate
-	$(PIP) install mkdocs mkdocs-awesome-pages-plugin mkdocs-htmlproofer-plugin mkdocs-material mkdocs-redirects
+	$(PIP) install mkdocs mkdocs-awesome-pages-plugin mkdocs-htmlproofer-plugin mkdocs-material mkdocs-redirects mkdocs-static-i18n
 	@echo
 	@echo '*** BEGIN cat mkdocs.yml ***'
 	@cat mkdocs.yml
 	@echo '*** END cat mkdocs.yml ***'
-	mkdocs build -f mkdocs.yml -d site
+	mkdocs build -f mkdocs.yml -d site 
+	sleep 10
+	mv docs/en/* docs/en/.* docs 
+	rm -rf  docs/es docs/zh 
 
 
 ## Build image localhost/kubevirt-user-guide
@@ -209,7 +215,25 @@ run: | envvar stop
 		-v /dev/null:/srv/Gemfile.lock:rw \
 		--mount type=tmpfs,destination=/srv/site \
 		${IMGTAG} \
-		/bin/bash -c "mkdocs build -f /srv/mkdocs.yml && mkdocs serve -f /srv/mkdocs.yml -a 0.0.0.0:8000"
+		/bin/bash -c "mkdocs build -v -f /srv/mkdocs.yml && mkdocs serve -f /srv/mkdocs.yml -a 0.0.0.0:8000"
+	@echo
+	@echo "${AQUA}Makefile: Server now running at [http://localhost:$(LOCAL_SERVER_PORT)]${RESET}"
+	@echo
+
+
+## Run site with translation.  App available @ http://0.0.0.0:8000
+run_i18n: | envvar stop
+	@echo "${GREEN}Makefile: Run site with translations${RESET}"
+	${CONTAINER_ENGINE} run \
+		-d \
+		--name userguide \
+		-p ${LOCAL_SERVER_PORT}:8000 \
+		-v ${PWD}:/srv/source:ro${SELINUX_ENABLED} \
+		-v /dev/null:/srv/Gemfile.lock:ro \
+		--mount type=tmpfs,destination=/srv/site \
+		--mount type=tmpfs,destination=/srv/docs \
+		${IMGTAG} \
+		/bin/bash -c "cp -r /srv/source/. /srv/ && rm -rf /srv/docs/es /srv/docs/zh && mkdir -p /srv/docs/en && find /srv/docs/ -mindepth 1 -maxdepth 1 ! -name 'assets' ! -name '_redirects' ! -name 'stylesheets' ! -name 'en' ! -name '.nav.yml' -print0 | xargs -0 -r mv -t /srv/docs/en/ && cp -r /srv/i18n/* /srv/docs/. && mkdocs build -v -f /srv/mkdocs.yml && mkdocs serve -f /srv/mkdocs.yml -a 0.0.0.0:8000"
 	@echo
 	@echo "${AQUA}Makefile: Server now running at [http://localhost:$(LOCAL_SERVER_PORT)]${RESET}"
 	@echo

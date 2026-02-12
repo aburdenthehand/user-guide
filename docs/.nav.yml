@@ -4,7 +4,7 @@ nav:
   - Quickstarts: quickstarts.md
   - Cluster Administration: cluster_admin
   - User Workloads: user_workloads
-  - Compute: compute
+  - compute
   - Network: network
   - Storage: storage
   - Release Notes: release_notes.md
