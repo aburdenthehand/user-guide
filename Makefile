@@ -117,7 +117,7 @@ build: envvar
 	@echo "${GREEN}Makefile: Build mkdocs site${RESET}"
 	$(PYTHON) -m venv /tmp/venv
 	. /tmp/venv/bin/activate
-	$(PIP) install mkdocs mkdocs-awesome-pages-plugin mkdocs-htmlproofer-plugin mkdocs-material mkdocs-redirects mkdocs-static-i18n
+	$(PIP) install mkdocs mkdocs-awesome-pages-plugin mkdocs-htmlproofer-plugin mkdocs-material mkdocs-redirects mkdocs-static-i18n mkdocs-section-index
 	@echo
 	@echo '*** BEGIN cat mkdocs.yml ***'
 	@cat mkdocs.yml
@@ -233,7 +233,7 @@ run_i18n: | envvar stop
 		--mount type=tmpfs,destination=/srv/site \
 		--mount type=tmpfs,destination=/srv/docs \
 		${IMGTAG} \
-		/bin/bash -c "cp -r /srv/source/. /srv/ && rm -rf /srv/docs/es /srv/docs/zh && mkdir -p /srv/docs/en && find /srv/docs/ -mindepth 1 -maxdepth 1 ! -name 'assets' ! -name '_redirects' ! -name 'stylesheets' ! -name 'en' ! -name '.nav.yml' -print0 | xargs -0 -r mv -t /srv/docs/en/ && cp -r /srv/i18n/* /srv/docs/. && mkdocs build -v -f /srv/mkdocs.yml && mkdocs serve -f /srv/mkdocs.yml -a 0.0.0.0:8000"
+		/bin/bash -c "cp -r /srv/source/. /srv/ && rm -rf /srv/docs/es /srv/docs/zh && mkdir -p /srv/docs/en && find /srv/docs/ -mindepth 1 -maxdepth 1 ! -name 'assets' ! -name '_redirects' ! -name 'stylesheets' ! -name 'en' ! -name '.nav.yml' -print0 | xargs -0 -r mv -t /srv/docs/en/ && cp -r /srv/docs/.nav.yml /srv/docs/en/ && cp -r /srv/i18n/* /srv/docs/. && mkdocs build -v -f /srv/mkdocs.yml && mkdocs serve -f /srv/mkdocs.yml -a 0.0.0.0:8000"
 	@echo
 	@echo "${AQUA}Makefile: Server now running at [http://localhost:$(LOCAL_SERVER_PORT)]${RESET}"
 	@echo

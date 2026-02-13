@@ -1,4 +1,4 @@
-# DNS records
+# DNS records scratch the best
 
 In order to create unique DNS records per VirtualMachineInstance, it is
 possible to set `spec.hostname` and `spec.subdomain`. If a subdomain is

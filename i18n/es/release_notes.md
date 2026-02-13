@@ -1,4 +1,5 @@
 ---
+title: Notas de la Versión
 hide:
   - navigation
 ---

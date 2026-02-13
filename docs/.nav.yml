@@ -1,10 +1,11 @@
+use_index_title: true
 nav:
   - Welcome: index.md
   - architecture.md
   - Quickstarts: quickstarts.md
-  - Cluster Administration: cluster_admin
+  - Cluster Administration: */cluster_admin
   - User Workloads: user_workloads
-  - compute
+  - Compute: compute
   - Network: network
   - Storage: storage
   - Release Notes: release_notes.md
