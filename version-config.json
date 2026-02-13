@@ -1,0 +1,21 @@
+{
+  "version_mappings": {
+    "main": {
+      "version": "Pre-release",
+      "alias": "pre-release"
+    },
+    "build-test": {
+      "version": "v1.8",
+      "alias": ""
+    }
+  },
+  "release_pattern": {
+    "pattern": "^release-v(.+)$",
+    "version_template": "v{1}",
+    "alias": "latest"
+  },
+  "default": {
+    "version_template": "{branch_name}",
+    "alias": ""
+  }
+}

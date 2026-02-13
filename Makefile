@@ -250,4 +250,151 @@ status: | envvar
 stop: | envvar
 	@echo "${GREEN}Makefile: Stop site${RESET}"
 	${CONTAINER_ENGINE} rm -f userguide 2> /dev/null; echo
+	${CONTAINER_ENGINE} rm -f userguide-versions 2> /dev/null; echo
 	@echo -n
+
+## Serve all deployed versions locally with mike
+serve_versions: | envvar stop
+	@echo "${GREEN}Makefile: Serve all versions with mike${RESET}"
+	${CONTAINER_ENGINE} run \
+		-d \
+		--name userguide-versions \
+		-p ${LOCAL_SERVER_PORT}:8000 \
+		-v ${PWD}:/srv:ro${SELINUX_ENABLED} \
+		-v /dev/null:/srv/Gemfile.lock:ro \
+		--workdir=/srv \
+		${IMGTAG} \
+		mike serve -a 0.0.0.0:8000
+	@echo
+	@echo "${AQUA}Makefile: All versions now running at [http://localhost:$(LOCAL_SERVER_PORT)]${RESET}"
+	@echo
+
+## Deploy current branch as documentation version
+deploy_version: | envvar
+	@echo "${GREEN}Makefile: Deploy current branch as documentation version${RESET}"
+	@if ! command -v jq >/dev/null 2>&1; then \
+		echo "${RED}Error: jq is required but not installed${RESET}"; \
+		exit 1; \
+	fi; \
+	CURRENT_BRANCH=$$(git branch --show-current); \
+	if [ -f "version-config.json" ]; then \
+		if ! jq empty version-config.json 2>/dev/null; then \
+			echo "${RED}Error: version-config.json contains invalid JSON${RESET}"; \
+			exit 1; \
+		fi; \
+		VERSION=$$(jq -r ".version_mappings.\"$$CURRENT_BRANCH\".version // empty" version-config.json); \
+		ALIAS=$$(jq -r ".version_mappings.\"$$CURRENT_BRANCH\".alias // empty" version-config.json); \
+		if [ -z "$$VERSION" ]; then \
+			if echo "$$CURRENT_BRANCH" | grep -q $$(jq -r '.release_pattern.pattern' version-config.json); then \
+				VERSION_NUM=$$(echo "$$CURRENT_BRANCH" | sed "s/release-v//"); \
+				VERSION=$$(jq -r '.release_pattern.version_template' version-config.json | sed "s/{1}/$$VERSION_NUM/"); \
+				ALIAS=$$(jq -r '.release_pattern.alias' version-config.json); \
+			else \
+				VERSION=$$(jq -r '.default.version_template' version-config.json | sed "s/{branch_name}/$$CURRENT_BRANCH/"); \
+				ALIAS=$$(jq -r '.default.alias' version-config.json); \
+			fi; \
+		fi; \
+	else \
+		echo "${YELLOW}No version-config.json found, using default logic${RESET}"; \
+		if [ "$$CURRENT_BRANCH" = "main" ]; then \
+			VERSION="Pre-release"; \
+			ALIAS="pre-release"; \
+		elif echo "$$CURRENT_BRANCH" | grep -q "^release-v"; then \
+			VERSION=$$(echo "$$CURRENT_BRANCH" | sed 's/release-//'); \
+			ALIAS="latest"; \
+		elif [ "$$CURRENT_BRANCH" = "build-test" ]; then \
+			VERSION="v1.8"; \
+			ALIAS=""; \
+		else \
+			VERSION="$$CURRENT_BRANCH"; \
+			ALIAS=""; \
+		fi; \
+	fi; \
+	echo "${WHITE}Deploying branch '$$CURRENT_BRANCH' as version '$$VERSION'${RESET}"; \
+	if [ -n "$$ALIAS" ]; then \
+		echo "${WHITE}Setting alias: $$ALIAS${RESET}"; \
+		${CONTAINER_ENGINE} run \
+			--rm \
+			-v ${PWD}:/srv:rw${SELINUX_ENABLED} \
+			-v /dev/null:/srv/Gemfile.lock:ro \
+			--workdir=/srv \
+			${IMGTAG} \
+			/bin/bash -c "git config --global --add safe.directory /srv && mike deploy \"$$VERSION\" \"$$ALIAS\""; \
+		if [ "$$ALIAS" = "latest" ]; then \
+			${CONTAINER_ENGINE} run \
+				--rm \
+				-v ${PWD}:/srv:rw${SELINUX_ENABLED} \
+				-v /dev/null:/srv/Gemfile.lock:ro \
+				--workdir=/srv \
+				${IMGTAG} \
+				/bin/bash -c "git config --global --add safe.directory /srv && mike set-default latest"; \
+		fi; \
+	else \
+		${CONTAINER_ENGINE} run \
+			--rm \
+			-v ${PWD}:/srv:rw${SELINUX_ENABLED} \
+			-v /dev/null:/srv/Gemfile.lock:ro \
+			--workdir=/srv \
+			${IMGTAG} \
+			/bin/bash -c "git config --global --add safe.directory /srv && mike deploy \"$$VERSION\""; \
+	fi
+
+## List all deployed versions
+list_versions: | envvar
+	@echo "${GREEN}Makefile: List all deployed versions${RESET}"
+	${CONTAINER_ENGINE} run \
+		--rm \
+		-v ${PWD}:/srv:ro${SELINUX_ENABLED} \
+		-v /dev/null:/srv/Gemfile.lock:ro \
+		--workdir=/srv \
+		${IMGTAG} \
+		/bin/bash -c "git config --global --add safe.directory /srv && mike list"
+
+## Deploy a specific branch as a specific version
+deploy_branch_as_version: | envvar
+	@echo "${GREEN}Makefile: Deploy specific branch as specific version${RESET}"
+	@if [ -z "$(BRANCH)" ] || [ -z "$(VERSION)" ]; then \
+		echo "${RED}Usage: make deploy_branch_as_version BRANCH=<branch_name> VERSION=<version_name> [ALIAS=<alias>]${RESET}"; \
+		echo "${RED}Example: make deploy_branch_as_version BRANCH=main VERSION=Pre-release ALIAS=pre-release${RESET}"; \
+		exit 1; \
+	fi; \
+	echo "${WHITE}Deploying branch '$(BRANCH)' as version '$(VERSION)'${RESET}"; \
+	if [ -n "$(ALIAS)" ]; then \
+		echo "${WHITE}Setting alias: $(ALIAS)${RESET}"; \
+		${CONTAINER_ENGINE} run \
+			--rm \
+			-v ${PWD}:/srv:rw${SELINUX_ENABLED} \
+			-v /dev/null:/srv/Gemfile.lock:ro \
+			--workdir=/srv \
+			${IMGTAG} \
+			/bin/bash -c "git config --global --add safe.directory /srv && STASHED=0 && if git diff --quiet; then echo 'No changes to stash'; else git stash && STASHED=1; fi && git checkout $(BRANCH) && mike deploy \"$(VERSION)\" \"$(ALIAS)\" && git checkout - && if [ \$$STASHED -eq 1 ]; then git stash pop; fi"; \
+		if [ "$(ALIAS)" = "latest" ]; then \
+			${CONTAINER_ENGINE} run \
+				--rm \
+				-v ${PWD}:/srv:rw${SELINUX_ENABLED} \
+				-v /dev/null:/srv/Gemfile.lock:ro \
+				--workdir=/srv \
+				${IMGTAG} \
+				/bin/bash -c "git config --global --add safe.directory /srv && mike set-default latest"; \
+		fi; \
+	else \
+		${CONTAINER_ENGINE} run \
+			--rm \
+			-v ${PWD}:/srv:rw${SELINUX_ENABLED} \
+			-v /dev/null:/srv/Gemfile.lock:ro \
+			--workdir=/srv \
+			${IMGTAG} \
+			/bin/bash -c "git config --global --add safe.directory /srv && STASHED=0 && if git diff --quiet; then echo 'No changes to stash'; else git stash && STASHED=1; fi && git checkout $(BRANCH) && mike deploy \"$(VERSION)\" && git checkout - && if [ \$$STASHED -eq 1 ]; then git stash pop; fi"; \
+	fi
+
+## Delete a specific version
+delete_version: | envvar
+	@echo "${GREEN}Makefile: Delete documentation version${RESET}"
+	@read -p "Enter version to delete: " VERSION && \
+	${CONTAINER_ENGINE} run \
+		--rm \
+		-v ${PWD}:/srv:rw${SELINUX_ENABLED} \
+		-v /dev/null:/srv/Gemfile.lock:ro \
+		--workdir=/srv \
+		${IMGTAG} \
+		/bin/bash -c "git config --global --add safe.directory /srv && mike delete \"$$VERSION\""
