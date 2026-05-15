@@ -1,7 +1,7 @@
 .PHONY: help envvar \
 				check_links check_spelling \
 				build build_img \
-				status run stop
+				status run stop run_versioned verify_versioned
 
 # COLORS
 RED    := $(shell tput -Txterm setaf 1)
@@ -114,7 +114,7 @@ build: envvar
 	@echo "${GREEN}Makefile: Build mkdocs site${RESET}"
 	$(PYTHON) -m venv /tmp/venv
 	. /tmp/venv/bin/activate
-	$(PIP) install mkdocs mkdocs-awesome-pages-plugin mkdocs-htmlproofer-plugin mkdocs-material mkdocs-redirects
+	$(PIP) install mkdocs mkdocs-awesome-nav mkdocs-htmlproofer-plugin mkdocs-material mkdocs-redirects
 	@echo
 	@echo '*** BEGIN cat mkdocs.yml ***'
 	@cat mkdocs.yml
@@ -213,6 +213,80 @@ run: | envvar stop
 	@echo
 	@echo "${AQUA}Makefile: Server now running at [http://localhost:$(LOCAL_SERVER_PORT)]${RESET}"
 	@echo
+
+
+## Run versioned site with mike using git worktrees (for testing versioning locally)
+run_versioned: | envvar stop
+	@echo "${GREEN}Makefile: Run versioned site with mike${RESET}"
+	@echo "${YELLOW}Setting up git worktrees for version testing...${RESET}"
+	# Clean up any existing worktrees
+	${DEBUG}git worktree remove -f .worktrees/v1.7 2>/dev/null || true
+	${DEBUG}rm -rf .worktrees 2>/dev/null || true
+	${DEBUG}mkdir -p .worktrees
+	# Create worktree for v1.7
+	${DEBUG}git worktree add .worktrees/v1.7 upstream/release-v1.7-devel
+	@echo "${YELLOW}Building versioned docs...${RESET}"
+	# Run container with both main and v1.7 mounted
+	${DEBUG}${CONTAINER_ENGINE} run \
+		-it \
+		--rm \
+		--name userguide-versioned \
+		-p ${LOCAL_SERVER_PORT}:8000 \
+		-v ${PWD}:/srv/main:ro${SELINUX_ENABLED} \
+		-v ${PWD}/.worktrees/v1.7:/srv/v1.7:ro${SELINUX_ENABLED} \
+		--mount type=tmpfs,destination=/tmp/site \
+		--workdir=/tmp/site \
+		${IMGTAG} \
+		/bin/bash -c ' \
+			pip install mike mkdocs-static-i18n && \
+			git config --global user.name "Local Test" && \
+			git config --global user.email "test@local" && \
+			git init && \
+			cp -r /srv/v1.7/* . && \
+			sed -i "/^site_favicon:/d" mkdocs.yml && \
+			sed -i "/content.action.edit/a\\    - navigation.version" mkdocs.yml && \
+			sed -i "/^extra:/a\\  version:\\n    provider: mike" mkdocs.yml && \
+			bash hack/internationalize.sh . && \
+			git add -A && git commit -q -m "v1.7" && \
+			mike deploy --branch gh-pages --config-file mkdocs.yml v1.7 && \
+			cp hack/internationalize.sh /tmp/int.sh && \
+			find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} + && \
+			cp -r /srv/main/* . && \
+			mkdir -p hack i18n/es i18n/zh && \
+			cp /tmp/int.sh hack/internationalize.sh && \
+			sed -i "/  - awesome-nav/i\\  - i18n:\\n      docs_structure: folder\\n      languages:\\n        - locale: en\\n          name: English\\n          default: true\\n          link: /en/\\n        - locale: es\\n          name: Español\\n          link: /es/\\n        - locale: zh\\n          name: 中文\\n          link: /zh/" mkdocs.yml && \
+			bash hack/internationalize.sh . && \
+			git add -A && git commit -q -m "main" && \
+			mike deploy --branch gh-pages --config-file mkdocs.yml latest main && \
+			mike set-default --branch gh-pages latest && \
+			mike serve --branch gh-pages -a 0.0.0.0:8000 \
+		'
+	@echo "${AQUA}Versioned site stopped. Cleaning up worktrees...${RESET}"
+	${DEBUG}git worktree remove -f .worktrees/v1.7 2>/dev/null || true
+	${DEBUG}rm -rf .worktrees 2>/dev/null || true
+
+
+## Verify versioned build (check version content)
+verify_versioned: | envvar
+	@echo "${GREEN}Verifying version-specific content${RESET}"
+	${DEBUG}${CONTAINER_ENGINE} run \
+		-it \
+		--rm \
+		--name userguide-verify \
+		-v ${PWD}:/srv/main:ro${SELINUX_ENABLED} \
+		${IMGTAG} \
+		/bin/bash -c 'head -12 /srv/main/docs/release_notes.md | grep -q "## v1.8.0" && echo "✓ Main branch has v1.8.0" || echo "✗ Main branch missing v1.8.0"'
+	${DEBUG}git worktree add .worktrees/v1.7-verify upstream/release-v1.7-devel 2>/dev/null || true
+	${DEBUG}${CONTAINER_ENGINE} run \
+		-it \
+		--rm \
+		--name userguide-verify-v17 \
+		-v ${PWD}/.worktrees/v1.7-verify:/srv/v1.7:ro${SELINUX_ENABLED} \
+		${IMGTAG} \
+		/bin/bash -c 'head -12 /srv/v1.7/docs/release_notes.md | grep -q "## v1.7.0" && echo "✓ v1.7 branch has v1.7.0" || echo "✗ v1.7 branch missing v1.7.0"'
+	${DEBUG}git worktree remove -f .worktrees/v1.7-verify 2>/dev/null || true
+	${DEBUG}rm -rf .worktrees 2>/dev/null || true
+	@echo "${GREEN}Verification complete${RESET}"
 
 
 ## Container status

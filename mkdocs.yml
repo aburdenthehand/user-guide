@@ -7,7 +7,7 @@ site_dir: site
 plugins:
   - search:
       separator: '[\s\-,:!=\[\]\(\)"/]+|\.(?!\d)'
-  - awesome-pages
+  - awesome-nav
   - redirects:
       redirect_maps:
          'operations/customize_components.md': 'cluster_admin/customize_components.md'
@@ -85,7 +85,6 @@ plugins:
          'virtual_machines/guestfs.md': 'storage/guestfs.md'
 
 remote_branch: main
-site_favicon: assets/favicon.ico
 edit_uri: https://github.com/kubevirt/user-guide/edit/main/docs/
 
 markdown_extensions:
@@ -103,6 +102,10 @@ markdown_extensions:
 
 extra_css:
   - stylesheets/extra.css
+
+extra:
+  version:
+    provider: mike
 
 theme:
   name: material
@@ -126,9 +129,10 @@ theme:
         name: Switch to light mode
        
   features:
-    - navigation.sections  
+    - navigation.sections
     - navigation.footer
     - navigation.tabs
     - navigation.tabs.sticky
     - content.action.view
     - content.action.edit
+    - navigation.version
