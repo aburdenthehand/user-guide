@@ -8,7 +8,7 @@ hide:
 The KubeVirt User Guide is divided into the following sections:
 
 * Architecture: Technical and conceptual overview of KubeVirt components
-* Quickstarts: A list of resources to help you learn KubeVirt basics
+* Getting Started: Persona-based guides for decision makers, operators, and contributors
 * Cluster Administration: Cluster-level administration concepts and tasks
 * User Workloads: Creating, customizing, using, and monitoring virtual machines 
 * Compute: Resource allocation and optimization for the virtualization layer
@@ -18,15 +18,41 @@ The KubeVirt User Guide is divided into the following sections:
 * Contributing: How you can contribute to this guide or the KubeVirt project 
 * Virtualization Debugging: How to debug your KubeVirt cluster and virtual resources
 
-## Try it out
+## Start here
 
-- Kubevirt on Killercoda: <https://killercoda.com/kubevirt>
+<div class="grid cards" markdown>
 
-- Kubevirt on Minikube: <https://kubevirt.io/quickstart_minikube/>
+- **Evaluating KubeVirt**
 
-- Kubevirt on Kind: <https://kubevirt.io/quickstart_kind/>
+    ***
 
-- Kubevirt on cloud providers: <https://kubevirt.io/quickstart_cloud/>
+    For architects and decision makers assessing KubeVirt for their organization.
+
+    ***
+
+    [:octicons-arrow-right-24: Why KubeVirt?](getting_started/decision_makers.md)
+
+- **Running KubeVirt**
+
+    ***
+
+    Install KubeVirt and run your first VM in minutes.
+
+    ***
+
+    [:octicons-arrow-right-24: First steps guide](getting_started/users.md)
+
+- **Contributing**
+
+    ***
+
+    Contribute code, docs, or community effort to the KubeVirt project.
+
+    ***
+
+    [:octicons-arrow-right-24: Contributing guide](getting_started/contributors.md)
+
+</div>
 
 ## KubeVirt Labs
 
