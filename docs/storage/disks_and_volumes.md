@@ -286,6 +286,22 @@ Supported volume sources are
 All possible configuration options are available in the [Volume API
 Reference](https://kubevirt.github.io/api-reference/master/definitions.html#_v1_volume).
 
+### Choosing a volume type
+
+Volume types differ primarily in their **persistence characteristics** and **storage mechanism**. Understanding this distinction is critical for choosing the right volume type.
+
+| Volume type | Data survives VM restart? | Storage mechanism | Typical use case |
+|-------------|--------------------------|-------------------|------------------|
+| `dataVolume` | Yes | PersistentVolumeClaim (automatically provisioned) | Persistent workloads, OS disks that retain state |
+| `persistentVolumeClaim` | Yes | PersistentVolumeClaim (pre-provisioned) | Persistent workloads with manually managed storage |
+| `containerDisk` | No | Container image in registry | Stateless VMs, test environments, replica sets |
+| `ephemeral` | No | Copy-on-write layer over a backing PVC | Read-only base image with discardable writes |
+| `emptyDisk` | No | Local disk, wiped on VM restart | Temporary scratch space within a single VM lifecycle |
+
+**If your workload needs data to persist across VM restarts**, use `dataVolume` or `persistentVolumeClaim`. A `dataVolume` is the recommended choice when you also need to import disk images from an external source (HTTP server, container registry, another PVC), because it automates PVC creation and data import. See [dataVolume](#datavolume) for details.
+
+**If your workload is stateless** and does not need data to survive a restart, use `containerDisk`. ContainerDisks are distributed as container images, require no network storage, and are ideal for VirtualMachineInstanceReplicaSets. See [containerDisk](#containerdisk) for details.
+
 ### cloudInitNoCloud
 
 Allows attaching `cloudInitNoCloud` data-sources to the VM. If the VM
@@ -535,6 +551,8 @@ DataVolume, users have to prepare a PVC with a disk image before
 assigning it to a VM or VMI manifest. With a DataVolume, both the PVC
 creation and import is automated on behalf of the user.
 
+DataVolumes result in **persistent** storage backed by a PVC. The imported data is retained across VM restarts. If you need an ephemeral disk that is distributed via a container registry and does not persist data, see [containerDisk](#containerdisk) instead.
+
 #### DataVolume VM Behavior
 
 DataVolumes can be defined in the VM spec directly by adding the
@@ -665,6 +683,8 @@ Ephemeral volumes are useful in any scenario where disk persistence is
 not desired. The COW image is discarded when VM reaches a final state
 (e.g., succeeded, failed).
 
+Another way to achieve ephemeral behavior is to use a [containerDisk](#containerdisk), which distributes the base image as a container image rather than requiring a backing PVC.
+
 Currently, only `PersistentVolumeClaim` may be used as a backing store
 of the ephemeral volume.
 
@@ -718,6 +738,8 @@ conjunction with VirtualMachineInstanceReplicaSets.
 
 `containerDisks` are not a good solution for any workload that requires
 persistent root disks across VM restarts.
+
+For workloads that require persistent storage, use a [dataVolume](#datavolume) or [persistentVolumeClaim](#persistentvolumeclaim) instead.
 
 #### containerDisk Workflow Example
 
