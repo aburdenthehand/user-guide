@@ -34,6 +34,7 @@ Not sure where to start? Here are some open issues in suggested repos. Look for 
 These repositories have low barriers to entry and are great for first contributions. You don't need to be a Go developer to contribute here:
 
 * **[user-guide](https://github.com/kubevirt/user-guide/issues)**: The documentation you're reading now. Fixes to typos, unclear explanations, or missing feature docs are always welcome.
+  * For documentation style conventions, see the [Style Guide](style-guide.md).
 * **[kubevirt.github.io](https://github.com/kubevirt/kubevirt.github.io/issues)**: The KubeVirt website. You can contribute blog posts, case studies, or labs.
 * **[community](https://github.com/kubevirt/community/issues)**: Governance and community documents.
 

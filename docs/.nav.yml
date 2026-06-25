@@ -9,4 +9,5 @@ nav:
   - Storage: storage
   - Release Notes: release_notes.md
   - contributing.md
+  - Style Guide: style-guide.md
   - Virtualization Debugging: debug_virt_stack
